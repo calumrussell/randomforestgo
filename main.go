@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"math/rand"
 	"sort"
 )
 
@@ -154,7 +154,26 @@ func (rt *RegressionTree) buildTree(featuresData FeaturesWithTargets, depth int)
 	return &Node{left: leftNode, right: rightNode, idx: featureIndex, splitValue: splitValue, prediction: prediction}
 }
 
-func (rt *RegressionTree) fit(featuresData FeaturesWithTargets) {
+func (rt *RegressionTree) fit(x [][]float64, y []float64) {
+	featuresData := make(FeaturesWithTargets, len(x))
+
+	// Iterate over features, joining them with target, sorting
+	for i := range len(x) {
+
+		feature_with_targets := make(FeatureWithTarget, len(y))
+		// Iterate over targets and feature
+		for j := range x[i] {
+			joined := [2]float64{x[i][j], y[j]}
+			feature_with_targets[j] = joined
+		}
+
+		sort.Slice(feature_with_targets, func(i, j int) bool {
+			return feature_with_targets[i][0] < feature_with_targets[j][0]
+		})
+
+		featuresData[i] = feature_with_targets
+	}
+
 	rt.root = rt.buildTree(featuresData, 0)
 }
 
@@ -174,47 +193,27 @@ func (rt *RegressionTree) predict(x []float64, node *Node) float64 {
 	}
 }
 
-func prepareData(x [][]float64, y []float64) FeaturesWithTargets {
-	features_with_targets := make(FeaturesWithTargets, len(x))
+func generateRandomData(length int, features int) ([][]float64, []float64) {
+	x := make([][]float64, 0)
 
-	// Iterate over features, joining them with target, sorting
-	for i := range len(x) {
-
-		feature_with_targets := make(FeatureWithTarget, len(y))
-		// Iterate over targets and feature
-		for j := range x[i] {
-			joined := [2]float64{x[i][j], y[j]}
-			feature_with_targets[j] = joined
+	for range features {
+		tmp := make([]float64, length)
+		for range length {
+			tmp = append(tmp, rand.Float64())
 		}
-
-		sort.Slice(feature_with_targets, func(i, j int) bool {
-			return feature_with_targets[i][0] < feature_with_targets[j][0]
-		})
-
-		features_with_targets[i] = feature_with_targets
+		x = append(x, tmp)
 	}
 
-	return features_with_targets
+	y := make([]float64, length)
+	for range length {
+		y = append(y, rand.Float64())
+	}
+
+	return x, y
 }
 
 func main() {
-	x := [][]float64{
-		{2.4, 1.2, 6.4, 7.3},
-		{2.1, 4.7, 8.1, 6.2},
-	}
-	y := []float64{8.1, 13.0, 16.0, 27.0}
-
-	features_with_targets := prepareData(x, y)
-
+	x, y := generateRandomData(1000, 20)
 	rt := RegressionTree{maxDepth: 3, minSampleSize: 2}
-	rt.fit(features_with_targets)
-
-	test := rt.predict([]float64{2.4, 2.1}, nil)
-	test1 := rt.predict([]float64{1.2, 4.7}, nil)
-	test2 := rt.predict([]float64{6.4, 8.1}, nil)
-	test3 := rt.predict([]float64{7.3, 6.2}, nil)
-	fmt.Printf("%f\n", test)
-	fmt.Printf("%f\n", test1)
-	fmt.Printf("%f\n", test2)
-	fmt.Printf("%f\n", test3)
+	rt.fit(x, y)
 }
