@@ -193,6 +193,28 @@ func (rt *RegressionTree) predict(x []float64, node *Node) float64 {
 	}
 }
 
+func buildUp(x [][]float64, y []float64, length int) {
+	iter := 100
+	trees := make([]*RegressionTree, iter)
+
+	for j := range iter {
+		bootstrap_start := rand.Intn(length)
+		bootstrap_end := bootstrap_start + rand.Intn(length-bootstrap_start)
+
+		bootstrap_x := make([][]float64, len(x))
+		for i := range x {
+			feature_slice := x[i][bootstrap_start:bootstrap_end]
+			bootstrap_x[i] = feature_slice
+		}
+		bootstrap_y := y[bootstrap_start:bootstrap_end]
+
+		rt := RegressionTree{maxDepth: 3, minSampleSize: 2}
+		rt.fit(bootstrap_x, bootstrap_y)
+
+		trees[j] = &rt
+	}
+}
+
 func generateRandomData(length int, features int) ([][]float64, []float64) {
 	x := make([][]float64, 0)
 
@@ -214,6 +236,6 @@ func generateRandomData(length int, features int) ([][]float64, []float64) {
 
 func main() {
 	x, y := generateRandomData(1000, 20)
-	rt := RegressionTree{maxDepth: 3, minSampleSize: 2}
-	rt.fit(x, y)
+
+	buildUp(x, y, 1000)
 }
