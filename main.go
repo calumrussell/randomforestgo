@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/rand"
+	"slices"
 	"sort"
 )
 
@@ -25,6 +26,11 @@ type RegressionTree struct {
 	minSampleSize        int
 	maxDepth             int
 	minVarianceReduction float64
+}
+
+type RandomForest struct {
+	trees       []*RegressionTree
+	minFeatures int
 }
 
 func variance(arr []float64) float64 {
@@ -193,26 +199,60 @@ func (rt *RegressionTree) predict(x []float64, node *Node) float64 {
 	}
 }
 
-func buildUp(x [][]float64, y []float64, length int) {
+func (rf *RandomForest) fit(x [][]float64, y []float64) {
 	iter := 100
-	trees := make([]*RegressionTree, iter)
+	rf.trees = make([]*RegressionTree, iter)
+
+	size := len(y)
 
 	for j := range iter {
-		bootstrap_start := rand.Intn(length)
-		bootstrap_end := bootstrap_start + rand.Intn(length-bootstrap_start)
+		println(j)
 
-		bootstrap_x := make([][]float64, len(x))
-		for i := range x {
+		bootstrap_start := rand.Intn(size)
+		bootstrap_end := bootstrap_start + rand.Intn(size-bootstrap_start)
+
+		// Defines how many features to select
+		featureSelection := rf.minFeatures + rand.Intn(len(x)-rf.minFeatures)
+		features := make([]int, featureSelection)
+		for i := range featureSelection {
+			pick := -1
+			for pick == -1 {
+				try := rand.Intn(len(x))
+				if !slices.Contains(features, try) {
+					pick = try
+				}
+			}
+			features[i] = pick
+		}
+
+		bootstrap_x := make([][]float64, featureSelection)
+		for i := range features {
 			feature_slice := x[i][bootstrap_start:bootstrap_end]
 			bootstrap_x[i] = feature_slice
 		}
 		bootstrap_y := y[bootstrap_start:bootstrap_end]
 
-		rt := RegressionTree{maxDepth: 3, minSampleSize: 2}
+		rt := RegressionTree{maxDepth: 10, minSampleSize: 2}
 		rt.fit(bootstrap_x, bootstrap_y)
 
-		trees[j] = &rt
+		rf.trees[j] = &rt
 	}
+}
+
+func (rf *RandomForest) predict(x []float64) float64 {
+	predicted := 0.0
+	for i := range rf.trees {
+		predicted += rf.trees[i].predict(x, nil)
+	}
+	return predicted / float64(len(rf.trees))
+}
+
+func generateRandomFeatures(features int) []float64 {
+	x := make([]float64, features)
+	for i := range features {
+		x[i] = rand.Float64()
+	}
+	return x
 }
 
 func generateRandomData(length int, features int) ([][]float64, []float64) {
@@ -237,5 +277,9 @@ func generateRandomData(length int, features int) ([][]float64, []float64) {
 func main() {
 	x, y := generateRandomData(1000, 20)
 
-	buildUp(x, y, 1000)
+	rf := RandomForest{minFeatures: 10}
+	rf.fit(x, y)
+
+	test := generateRandomFeatures(20)
+	res := rf.predict(test)
 }
